@@ -1,21 +1,25 @@
 import json
+from functools import lru_cache
 
 class LRU:
     def __init__(self):
         self.cache_keys: list[int] = []
         self.cache_vals: list[str] = []
 
-        self.max_size = 10
+        self.max_size = 128
 
         # Only count misses after the cache has been filled
         self.misses = -self.max_size
 
     # cache var is the filename of where to search
     def getFromDisk(self, key: int, fname: str) -> str:
+        # Cache miss
+        self.misses += 1
+
         with open(fname) as file:
             loaded: dict[int, str] = json.load(file)
 
-        return loaded.get(key)
+        return loaded.get(str(key))
 
     def lookup(self, key: int, fname: str) -> str:
         if key in self.cache_keys:
@@ -32,8 +36,6 @@ class LRU:
 
             return self.cache_vals[0]
 
-        # Cache miss
-        self.misses += 1
 
         if len(self.cache_keys) >= self.max_size:
             # Replace
