@@ -2,13 +2,6 @@ import timeit
 import random
 import policies
 
-#### TODO ####
-# Test different scenarios:
-# Random things being accessed 
-# Few things being accessed a lot, a lot of things being accessed a bit
-# Different number of acesses to see if some strategies do better under load, per se
-
-
 runs = 100
 
 lfu = policies.LFU()
