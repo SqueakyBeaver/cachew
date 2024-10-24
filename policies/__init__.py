@@ -2,5 +2,6 @@
 # :)
 from .LFU import LFU
 from .LRU import LRU
+from .policy import Policy
 
-__all__ = ["LFU", "LRU"]
+__all__ = ["LFU", "LRU", "Policy"]

@@ -1,26 +1,17 @@
 import json
+from .policy import Policy
 
-class LFU:
-    def __init__(self):
+class LFU(Policy):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         # { (uses, [keys] }
         self.cache_freq: dict[int, list[int]] = {}
         # { key: (uses, value) }
         self.cache: dict[int, tuple[int, str]] = {}
 
-        self.max_size = 128
-
-        # Only count misses after the cache has been filled once
-        self.misses = -self.max_size
-
-    # cache var is the filename of where to search
-    def getFromDisk(self, key: int, fname: str) -> str:
-        # Cache miss
-        self.misses += 1
-
-        with open(fname) as file:
-            loaded: dict[int, str] = json.load(file)
-
-        return loaded.get(str(key))
+    def __str__(self):
+        return "LFU"
 
     def lookup(self, key: int, fname: str) -> str:
         if len(self.cache) > self.max_size:

@@ -1,30 +1,46 @@
 import timeit
 import random
 import policies
+import math
 
 runs = 1000
-reps = 5
-
-lfu = policies.LFU()
-total_time = timeit.repeat(
-    "lfu.lookup(random.randint(0, 255), 'inputs/small.json')",
-    globals=globals(),
-    repeat=reps,
-    number=runs,
-)
-print(f"{lfu.misses} misses using LFU | {lfu.misses / (runs * reps) * 100}% missed")
-print(f"{sum(total_time) * 1000}ms taken total")
-print(f"Minimum time taken: {min(total_time) * 1000}ms\n")
+reps = 10
+max_cache_size = 128
+# should be < 0
+# controls decay of the amount of items in the keyset
+# -1 supposedly makes it equals to kipf's law
+shape = -1
 
 
-lru = policies.LRU()
-total_time = timeit.repeat(
-    "lru.lookup(random.randint(0, 255), 'inputs/small.json')",
-    globals=globals(),
-    repeat=reps,
-    number=runs,
-)
+def benchmark(policy: policies.Policy) -> None:
+    global runs
+    global reps
+    global max_cache_size
 
-print(f"{lru.misses} misses using LRU | {lru.misses / (runs * reps) * 100}% missed")
-print(f"{sum(total_time) * 1000}ms taken total")
-print(f"Minimum time taken: {min(total_time) * 1000}ms")
+    # Zipf's law, I guess
+    # (This is cool math stuff)
+    keyset = []
+    for i in range(1, 2 * max_cache_size):
+        freq = max_cache_size * (i**-0.5)
+        keyset += [i] * math.ceil(freq)
+
+    # exit(0)
+    times = timeit.repeat(
+        "policy.lookup(random.choice(keyset), 'inputs/small.json')",
+        globals=globals() | locals(),
+        repeat=reps,
+        number=runs,
+    )
+
+    print(
+        f"\n{policy.misses} misses using {policy} | {policy.misses / (runs * reps) * 100}% missed"
+    )
+    print(f"{sum(times) * 1000}ms taken total")
+    print(f"Minimum time taken: {min(times) * 1000}ms")
+
+
+lfu = policies.LFU(max_cache_size)
+benchmark(lfu)
+
+lru = policies.LRU(max_cache_size)
+benchmark(lru)
