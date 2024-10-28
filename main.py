@@ -5,11 +5,12 @@ import math
 
 runs = 1000
 reps = 10
-max_cache_size = 128
+max_cache_size = 128  # Needs to be a multiple of 4
+
 # should be < 0
 # controls decay of the amount of items in the keyset
 # -1 supposedly makes it equals to kipf's law
-shape = -1
+shape = -0.75
 
 
 def benchmark(policy: policies.Policy) -> None:
@@ -38,6 +39,9 @@ def benchmark(policy: policies.Policy) -> None:
     print(f"{sum(times) * 1000}ms taken total")
     print(f"Minimum time taken: {min(times) * 1000}ms")
 
+
+drrip = policies.DRRIP(max_size=max_cache_size)
+benchmark(drrip)
 
 lfu = policies.LFU(max_cache_size)
 benchmark(lfu)

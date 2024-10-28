@@ -3,5 +3,6 @@
 from .LFU import LFU
 from .LRU import LRU
 from .policy import Policy
+from .DRRIP import DRRIP
 
-__all__ = ["LFU", "LRU", "Policy"]
+__all__ = ["LFU", "LRU", "Policy", "DRRIP"]

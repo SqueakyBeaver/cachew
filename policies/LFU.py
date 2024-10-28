@@ -1,6 +1,7 @@
 import json
 from .policy import Policy
 
+
 class LFU(Policy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,11 +55,11 @@ class LFU(Policy):
             for i in least_used:
                 if i in self.cache:
                     self.cache.pop(i)
-            
+
             # Don't pop from cache_freq because
             # we still want to keep track of it for a bit
 
-        val = self.getFromDisk(key, fname)
+        val = self.get_from_disk(key, fname)
 
         if uses in self.cache_freq:
             self.cache_freq[uses] += [key]

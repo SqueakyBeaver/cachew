@@ -2,24 +2,15 @@ import json
 from functools import lru_cache
 from .policy import Policy
 
+
 class LRU(Policy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cache_keys: list[int] = []
         self.cache_vals: list[str] = []
-    
+
     def __str__(self):
         return "LRU"
-
-    # cache var is the filename of where to search
-    def getFromDisk(self, key: int, fname: str) -> str:
-        # Cache miss
-        self.misses += 1
-
-        with open(fname) as file:
-            loaded: dict[int, str] = json.load(file)
-
-        return loaded.get(str(key))
 
     def lookup(self, key: int, fname: str) -> str:
         if key in self.cache_keys:
@@ -36,13 +27,15 @@ class LRU(Policy):
 
             return self.cache_vals[0]
 
-
-        if len(self.cache_vals) >= self.max_size or len(self.cache_keys) >= self.max_size:
+        if (
+            len(self.cache_vals) >= self.max_size
+            or len(self.cache_keys) >= self.max_size
+        ):
             # Replace
             self.cache_keys.pop()
             self.cache_vals.pop()
 
-        val = self.getFromDisk(key, fname)
+        val = self.get_from_disk(key, fname)
 
         self.cache_keys.insert(0, key)
         self.cache_vals.insert(0, val)
