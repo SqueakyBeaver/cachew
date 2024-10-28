@@ -6,12 +6,19 @@ import abc
 class Policy(ABC):
     def __init__(self, max_size):
         self.max_size = max_size
-        self.misses = 0
+        self.misses = []
+
+    def new_run(self):
+        self.misses.append(0)
+        self.reset_cache()
+    
+    def get_misses(self) -> int:
+        return min(self.misses)
 
     # cache var is the filename of where to search
     def get_from_disk(self, key: int, fname: str) -> str:
         # Cache miss
-        self.misses += 1
+        self.misses[-1] += 1
 
         with open(fname) as file:
             loaded: dict[int, str] = json.load(file)
@@ -23,5 +30,12 @@ class Policy(ABC):
         """
         Abstract method to lookup a val given a key.
         fname is where to look if the key/value pair is not in the cache
+        """
+        pass
+
+    @abc.abstractmethod
+    def reset_cache(self) -> None:
+        """
+        Abstract method to reset the cache for a new run
         """
         pass

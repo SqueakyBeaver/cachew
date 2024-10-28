@@ -12,6 +12,10 @@ class LRU(Policy):
     def __str__(self):
         return "LRU"
 
+    def reset_cache(self) -> None:
+        self.cache_keys: list[int] = []
+        self.cache_vals: list[str] = []
+
     def lookup(self, key: int, fname: str) -> str:
         if key in self.cache_keys:
             # Find the old position

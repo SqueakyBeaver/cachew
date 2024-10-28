@@ -13,11 +13,14 @@ class LFU(Policy):
 
     def __str__(self):
         return "LFU"
+    
+    def reset_cache(self) -> None:
+        # { (uses, [keys] }
+        self.cache_freq: dict[int, list[int]] = {}
+        # { key: (uses, value) }
+        self.cache: dict[int, tuple[int, str]] = {}
 
     def lookup(self, key: int, fname: str) -> str:
-        if len(self.cache) > self.max_size:
-            print("NONONNONNONONNO")
-
         if key in self.cache:
             uses = self.cache[key][0]
 

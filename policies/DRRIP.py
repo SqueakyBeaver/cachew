@@ -1,104 +1,99 @@
-import operator
 import random
 from .policy import Policy
 
 
 class DRRIP(Policy):
     class CacheBlock:
-        def __init__(self, key: int, val: str, policy: str, rrpv: int = 3):
+        def __init__(self, key: int, val: str, policy: str, rrpv: int = 7):
             self.key = key
             self.val = val
+            self.rrpv = rrpv - 1
             self.policy = policy
 
-            p_bip = 0.05
-            self.rrpv = (
-                rrpv - 1 if policy == "BRRIP" and random.random() <= p_bip else rrpv
-            )
+            if policy == "b":
+                if random.random() <= 0.05:
+                    self.rrpv = rrpv - 2
 
         def __str__(self):
             return f"({self.key}, {self.val})"
 
-    def __init__(self, max_rrpv=3, *args, **kwargs):
+    def __init__(self, num_chunks=4, max_rrpv=7, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_rrpv = max_rrpv
 
-        self.num_chunks = self.max_size // 4
+        self.num_chunks = num_chunks
 
-        # Divided into 4 chunks: [SRRIP],  [BRRIP], and the rest
-        self.cache: list[list[DRRIP.CacheBlock]] = [list()] * self.num_chunks
+        self.cache: list[list[DRRIP.CacheBlock]] = [[] for i in range(self.num_chunks)]
+        self.cache_size = 0
 
-        # BRRIP indexes
-        self.b_sets = random.sample(range(self.max_size), self.num_chunks // 4)
-        # SRRIP indexes
-        self.s_sets = random.sample(range(self.max_size), self.num_chunks // 4)
+        self.s_idxs = random.sample(
+            range(self.max_size), self.max_size // self.num_chunks
+        )
 
-        # BRRIP, SRRIP
-        self.policy_cnt = [0, 0]
+        self.b_idxs = random.sample(
+            [i for i in range(self.max_size) if not i in self.s_idxs],
+            self.max_size // self.num_chunks,
+        )
+
+        self.policy_misses = {"s": 0, "b": 0}
 
     def __str__(self):
         return "DRRIP"
 
-    def evict(self, chunk: int) -> None:
+    def reset_cache(self) -> None:
+        self.cache: list[list[DRRIP.CacheBlock]] = [[] for i in range(self.num_chunks)]
+        self.cache_size = 0
+
+    def evict(self, chunk: int, policy: str) -> None:
         # No need to evict if the chunk isn't full
-        if len(self.cache[chunk]) < self.max_size // self.num_chunks:
-            return
+        
+        self.policy_misses[policy] -= 1
+
+        self.cache_size -= 1
 
         evict_idx = 0
-
-        # Go through indexes
-        # if chunk[idx].rrpv == max, that index is the new one to delete
-        # If more than one max, delete oldest
-        # If none, keep going
-
         while self.cache[chunk][evict_idx].rrpv < self.max_rrpv:
             for idx, block in enumerate(self.cache[chunk]):
-                if block.rrpv == self.max_rrpv:
-                    evict_idx = idx
-                    break
+                if block and block.rrpv >= self.max_rrpv:
+                    self.cache[chunk].pop(idx)
+                    return
 
-                block.rrpv += 1
+            for block in self.cache[chunk]:
+                if block:
+                    block.rrpv += 1
 
         # If the while loop never executed, then the oldest already has the max rrpv :)
         self.cache[chunk].pop(evict_idx)
 
     def lookup(self, key: int, fname: str) -> str:
+        if self.cache_size > self.max_size:
+            print("NONONONNNNONONNO")
         chunk = key % self.num_chunks
+        # The index that the key would occupy if the list was flattened
+        real_idx = key % self.max_size
 
-        x = None
         for x in self.cache[chunk]:
             if x and x.key == key:
-                break
-            else:
-                x = None
+                x.rrpv = 0
 
-        if x:
-            # X is in cache
-            x.rrpv = 0
-
-            return x.val
+                return x.val
 
         val = self.get_from_disk(key, fname)
 
-        if chunk in self.b_sets:
-            block = self.CacheBlock(key, val, "BRRIP")
-        elif chunk in self.s_sets:
-            block = self.CacheBlock(key, val, "SRRIP")
+        if real_idx in self.b_idxs:
+            policy = "b"
+        elif real_idx in self.s_idxs:
+            policy = "s"
         else:
-            policy = "BRRIP" if self.policy_cnt[0] > self.policy_cnt[1] else "SRRIP"
-            block = self.CacheBlock(key, val, policy)
+            policy = "b" if self.policy_misses["b"] < self.policy_misses["s"] else "s"
 
-        if block.policy == "BRRP":
-            self.policy_cnt[0] += 1
-        else:
-            self.policy_cnt[1] += 1
+        block = self.CacheBlock(key, val, policy)
+        self.policy_misses[policy] += 1
 
-        self.evict(chunk)
+        if self.cache_size >= self.max_size:
+            self.evict(chunk, policy)
 
         self.cache[chunk] += [block]
+        self.cache_size += 1
 
-        for i in self.cache:
-            print(len(i), sep=" ")
-            for x in i:
-                print(x, sep=" ")
-            print()
         return block.val
