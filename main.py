@@ -1,12 +1,13 @@
-import timeit
+import statistics
 import random
 import policies
 import math
 from output import output
 
-reps = 100
-max_cache_size = 128
-g_runs = 10000
+# Odd number means a nice, round median
+g_reps = 1
+g_requests = 100000
+g_cache_size = 128 / g_requests
 
 # Global so they will persist between runs
 run_counter = 0
@@ -25,8 +26,8 @@ def zipf(num_unique: int, shape: float, request_count: int) -> list[int]:
     Returns:
     - A list of requests (item accesses) following the Zipfian distribution.
     """
-    ranks = range(1, num_unique + 1)
-    probs = [r**shape for r in ranks]
+    ranks = range(num_unique)
+    probs = [(r + 1) ** shape for r in ranks]
     total_probs = sum(probs)
     norm_probs = [p / total_probs for p in probs]
 
@@ -36,95 +37,132 @@ def zipf(num_unique: int, shape: float, request_count: int) -> list[int]:
         k=request_count,
     )
 
-
-def run(policy: policies.Policy, keyset: list[int]) -> None:
+def run_lookup(policy: policies.Policy) -> None:
     global run_counter
+    global keyset
 
     policy.lookup(keyset[run_counter % len(keyset)])
     run_counter += 1
 
 
 def benchmark(
-    policy: policies.Policy, shape=-0.75, max_cache_size=128, runs=g_runs
-) -> None:
-    global reps
+    policies: list[policies.Policy],
+    shape=-0.75,
+    cache_size=g_cache_size,
+    requests=g_requests,
+) -> dict[str, policies.Policy]:
+    global g_reps
     global keyset
-    global run_counter
 
-    # Zipf's law
-    keyset = zipf(2 * max_cache_size, shape, runs)
+    cache_size = math.floor(cache_size * requests)
 
-    timeit.repeat(
-        "run(policy, keyset)",
-        globals=globals() | locals(),
-        repeat=reps,
-        number=runs,
-        setup="policy.new_run()\nrun_counter = 0",
-    )
+    total_hits = {
+        "LRU": [],
+        "LFU": [],
+        "DRRIP": [],
+    }
+    for _ in range(g_reps):
+        # Make a new keyset for each rep
+        keyset = zipf(cache_size * 2, shape, requests)
 
-    misses = policy.get_misses()
+        for policy in policies:
+            name = str(policy)
+            policy.max_size = cache_size
+            policy.new_run()
 
-    policy.misses = []
-    run_counter = 0
+            for x in range(requests):
+                policy.lookup(keyset[x % len(keyset)])
 
-    return misses
+            total_hits[name].append(policy.get_hits())
+
+    for p in policies:
+        p.hits = []
+
+    return {
+        "LRU": statistics.median(total_hits["LRU"]),
+        "LFU": statistics.median(total_hits["LFU"]),
+        "DRRIP": statistics.median(total_hits["DRRIP"]),
+    }
 
 
 def test():
     global keyset
-    global max_cache_size
-    global g_runs
+    global g_cache_size
+    global g_requests
 
-    drrip = policies.DRRIP(max_size=max_cache_size)
-    lfu = policies.LFU(max_size=max_cache_size)
-    lru = policies.LRU(max_size=max_cache_size)
+    drrip = policies.DRRIP(max_size=math.floor(g_cache_size * g_requests))
+    lfu = policies.LFU(max_size=math.floor(g_cache_size * g_requests))
+    lru = policies.LRU(max_size=math.floor(g_cache_size * g_requests))
+
+    control_data = [["LRU Hits", "LFU Hits", "DRRIP Hits"]]
+
+    hits = benchmark([drrip, lfu, lru])
+
+    control_data += [
+        [
+            hits["LRU"],
+            hits["LFU"],
+            hits["DRRIP"],
+        ]
+    ]
+
+    output("control", control_data)
+    print("Did control")
+    
 
     # Test different shapes of the input distribution
-    shape_data = [["Shape var value", "LRU Misses", "LFU Misses", "DRRIP Misses"]]
+    shape_data = [["Shape var value", "LRU Hits", "LFU Hits", "DRRIP Hits"]]
     for shape in range(-100, 5, 25):
         row = [shape / 100]
 
-        row.append(benchmark(lru, shape=shape / 100) / g_runs)
-        row.append(benchmark(lfu, shape=shape / 100) / g_runs)
-        row.append(benchmark(drrip, shape=shape / 100) / g_runs)
+        hits = benchmark([drrip, lfu, lru], shape=shape / 100)
+
+        row += [
+            round(hits["LRU"], ndigits=2),
+            round(hits["LFU"], ndigits=2),
+            round(hits["DRRIP"], ndigits=2),
+        ]
 
         shape_data.append(row)
-
 
     output("shape", shape_data)
     print("Finished Shape Test")
 
     # Test different cache sizes
-    cache_data = [["Cache Size", "LRU Misses", "LFU Misses", "DRRIP Misses"]]
-    for size in range(3, 14):
-        row = [2**size]
+    cache_data = [["Cache Size", "LRU Hits", "LFU Hits", "DRRIP Hits"]]
+    for exp in range(3, 14):
+        size = 2**exp
+        row = [size]
 
-        drrip.max_size = 2**size
-        lru.max_size = 2**size
-        lfu.max_size = 2**size
+        hits = benchmark([drrip, lfu, lru], cache_size=size)
 
-        row.append(benchmark(lru, max_cache_size=2**size) / g_runs)
-        row.append(benchmark(lfu, max_cache_size=2**size) / g_runs)
-        row.append(benchmark(drrip, max_cache_size=2**size) / g_runs)
+        row += [
+            round(hits["LRU"], ndigits=2),
+            round(hits["LFU"], ndigits=2),
+            round(hits["DRRIP"], ndigits=2),
+        ]
 
         cache_data.append(row)
 
-
-    drrip.max_size = max_cache_size
-    lru.max_size = max_cache_size
-    lfu.max_size = max_cache_size
+    drrip.max_size = g_cache_size * g_requests
+    lru.max_size = g_cache_size * g_requests
+    lfu.max_size = g_cache_size * g_requests
 
     output("cache_size", cache_data)
     print("Finished cache size Test")
 
     # Test different number of lookups
-    runs_data = [["Number of Lookups", "LRU Misses", "LFU Misses", "DRRIP Misses"]]
-    for runs in range(1000, 11000, 1000):
-        row = [runs]
+    runs_data = [["Number of Lookups", "LRU Hits", "LFU Hits", "DRRIP Hits"]]
+    for requests in range(1000, 11000, 1000):
+        row = [requests]
 
-        row.append(benchmark(lru, runs=runs) / runs)
-        row.append(benchmark(lfu, runs=runs) / runs)
-        row.append(benchmark(drrip, runs=runs) / runs)
+        hits = benchmark([drrip, lfu, lru], requests=requests)
+
+        row += [
+            round(hits["LRU"], ndigits=2),
+            round(hits["LFU"], ndigits=2),
+            round(hits["DRRIP"], ndigits=2),
+        ]
 
         runs_data.append(row)
 

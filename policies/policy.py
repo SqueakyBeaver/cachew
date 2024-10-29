@@ -4,22 +4,28 @@ import abc
 
 
 class Policy(ABC):
-    def __init__(self, max_size):
+    def __init__(self, max_size: int, assoc: int=4):
         self.max_size = max_size
-        self.misses = []
+        self.hits = []
+        self.assoc = assoc
+        self.num_sets = max_size // assoc
 
     def new_run(self):
-        self.misses.append(0)
+        self.hits.append(0)
         self.reset_cache()
     
-    def get_misses(self) -> int:
-        return math.ceil(sum(self.misses) / len(self.misses))
+    def get_hits(self) -> int:
+        return math.ceil(sum(self.hits) / len(self.hits))
+
+    def add_hit(self):
+        if len(self.hits) > 0:
+            self.hits[-1] += 1
+        else:
+            self.hits.append(1)
 
     # cache var is the filename of where to search
     def get_from_disk(self, key: int) -> str:
         # Cache miss
-        self.misses[-1] += 1
-
         legend = "abcdefghijklmnopqrstuvwxyz"
         val = ""
         while True:
