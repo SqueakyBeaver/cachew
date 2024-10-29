@@ -16,7 +16,7 @@ class LRU(Policy):
         self.cache_keys: list[int] = []
         self.cache_vals: list[str] = []
 
-    def lookup(self, key: int, fname: str) -> str:
+    def lookup(self, key: int) -> str:
         if key in self.cache_keys:
             # Find the old position
             pos = self.cache_keys.index(key)
@@ -39,7 +39,7 @@ class LRU(Policy):
             self.cache_keys.pop()
             self.cache_vals.pop()
 
-        val = self.get_from_disk(key, fname)
+        val = self.get_from_disk(key)
 
         self.cache_keys.insert(0, key)
         self.cache_vals.insert(0, val)

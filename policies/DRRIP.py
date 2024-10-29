@@ -68,7 +68,7 @@ class DRRIP(Policy):
         # If the while loop never executed, then the oldest already has the max rrpv :)
         self.cache[chunk].pop(evict_idx)
 
-    def lookup(self, key: int, fname: str) -> str:
+    def lookup(self, key: int) -> str:
         if self.cache_size > self.max_size:
             print("NONONONNNNONONNO")
         chunk = key % self.num_chunks
@@ -81,7 +81,7 @@ class DRRIP(Policy):
 
                 return x.val
 
-        val = self.get_from_disk(key, fname)
+        val = self.get_from_disk(key)
 
         if real_idx in self.b_idxs:
             policy = "b"

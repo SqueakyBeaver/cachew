@@ -16,22 +16,23 @@ class Policy(ABC):
         return math.ceil(sum(self.misses) / len(self.misses))
 
     # cache var is the filename of where to search
-    def get_from_disk(self, key: int, fname: str) -> str:
+    def get_from_disk(self, key: int) -> str:
         # Cache miss
         self.misses[-1] += 1
 
-        return "beep"
+        legend = "abcdefghijklmnopqrstuvwxyz"
+        val = ""
+        while True:
+            val += legend[key % 26]
+            key = key // 26
 
-        # with open(fname) as file:
-        #     loaded: dict[int, str] = json.load(file)
-
-        # return loaded.get(str(key % len(loaded)))
+            if key == 0:
+                return val
 
     @abc.abstractmethod
-    def lookup(self, key: int, fname: str) -> str:
+    def lookup(self, key: int) -> str:
         """
         Abstract method to lookup a val given a key.
-        fname is where to look if the key/value pair is not in the cache
         """
         pass
 
