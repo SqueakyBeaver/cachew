@@ -4,20 +4,20 @@ from .policy import Policy
 
 class DRRIP(Policy):
     class CacheBlock:
-        def __init__(self, key: int, val: str, policy: str, rrpv: int = 7):
+        def __init__(self, key: int, val: str, policy: str, rrpv: int = 3):
             self.key = key
             self.val = val
-            self.rrpv = rrpv - 1
+            self.rrpv = rrpv
             self.policy = policy
 
             if policy == "b":
-                if random.random() <= 0.05:
-                    self.rrpv = rrpv - 2
+                if random.random() <= 0.01:
+                    self.rrpv = rrpv - 1
 
         def __str__(self):
             return f"({self.key}, {self.val})"
 
-    def __init__(self, num_chunks=4, max_rrpv=7, *args, **kwargs):
+    def __init__(self, num_chunks=4, max_rrpv=3, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_rrpv = max_rrpv
 
@@ -43,9 +43,12 @@ class DRRIP(Policy):
     def reset_cache(self) -> None:
         self.cache: list[list[DRRIP.CacheBlock]] = [[] for i in range(self.num_chunks)]
         self.cache_size = 0
+        self.policy_misses = {"s": 0, "b": 0}
+
 
     def evict(self, chunk: int, policy: str) -> None:
-        # No need to evict if the chunk isn't full
+        while len(self.cache[chunk]) == 0:
+            chunk = (chunk + 1) % self.num_chunks
         
         self.policy_misses[policy] -= 1
 
@@ -93,7 +96,7 @@ class DRRIP(Policy):
         if self.cache_size >= self.max_size:
             self.evict(chunk, policy)
 
-        self.cache[chunk] += [block]
+        self.cache[chunk].append(block)
         self.cache_size += 1
 
         return block.val

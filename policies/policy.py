@@ -1,4 +1,4 @@
-import json
+import math
 from abc import ABC  # Abstract Base Class
 import abc
 
@@ -13,17 +13,19 @@ class Policy(ABC):
         self.reset_cache()
     
     def get_misses(self) -> int:
-        return min(self.misses)
+        return math.ceil(sum(self.misses) / len(self.misses))
 
     # cache var is the filename of where to search
     def get_from_disk(self, key: int, fname: str) -> str:
         # Cache miss
         self.misses[-1] += 1
 
-        with open(fname) as file:
-            loaded: dict[int, str] = json.load(file)
+        return "beep"
 
-        return loaded.get(str(key % len(loaded)))
+        # with open(fname) as file:
+        #     loaded: dict[int, str] = json.load(file)
+
+        # return loaded.get(str(key % len(loaded)))
 
     @abc.abstractmethod
     def lookup(self, key: int, fname: str) -> str:
