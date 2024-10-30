@@ -12,7 +12,7 @@ class DRRIP(Policy):
 
             if policy == "b":
                 if random.random() <= 0.01:
-                    self.rrpv = rrpv
+                    self.rrpv = rrpv - 1
 
         def __str__(self):
             return f"({self.tag}, {self.val})"
