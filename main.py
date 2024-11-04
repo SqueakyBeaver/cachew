@@ -3,16 +3,12 @@ import random
 import policies
 import math
 import itertools
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.special import zeta
 from output import output
 
 # Odd number means a nice, round median
 g_reps = 1
 g_requests = 100000
-g_cache_size = 128 / g_requests
-g_rng = np.random.default_rng()
+g_cache_size = 128
 
 # Global so they will persist between runs
 run_counter = 0
@@ -93,9 +89,9 @@ def test():
     global g_cache_size
     global g_requests
 
-    lru = policies.LRU(max_size=math.floor(g_cache_size * g_requests))
-    lfu = policies.LFU(max_size=math.floor(g_cache_size * g_requests))
-    rr = policies.RR(max_size=math.floor(g_cache_size * g_requests))
+    lru = policies.LRU(max_size=g_cache_size)
+    lfu = policies.LFU(max_size=g_cache_size)
+    rr = policies.RR(max_size=g_cache_size)
 
     control_data = [["LRU Hits", "LFU Hits", "RR Hits"]]
 
@@ -147,24 +143,24 @@ def test():
 
         cache_data.append(row)
 
-    rr.max_size = g_cache_size * g_requests
-    lru.max_size = g_cache_size * g_requests
-    lfu.max_size = g_cache_size * g_requests
+    rr.max_size = g_cache_size
+    lru.max_size = g_cache_size
+    lfu.max_size = g_cache_size
 
     output("cache_size", cache_data)
     print("Finished cache size Test")
 
     # Test different number of lookups
-    runs_data = [["Number of Lookups", "LRU Hits", "LFU Hits", "RR Hits"]]
-    for requests in range(1000, 11000, 1000):
+    runs_data = [["Number of Lookups", "LRU Hits (per 1000 Lookups)", "LFU Hits (per 1000 Lookups)", "RR Hits (per 1000 Lookups)"]]
+    for requests in range(10000, 110000, 10000):
         row = [requests]
 
         hits = benchmark([lru, lfu, rr], requests=requests)
 
         row += [
-            round(hits["LRU"], ndigits=2),
-            round(hits["LFU"], ndigits=2),
-            round(hits["RR"], ndigits=2),
+            round(hits["LRU"] / (requests / 1000), ndigits=2),
+            round(hits["LFU"] / (requests / 1000), ndigits=2),
+            round(hits["RR"] / (requests / 1000), ndigits=2),
         ]
 
         runs_data.append(row)
