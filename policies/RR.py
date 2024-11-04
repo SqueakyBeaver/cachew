@@ -22,9 +22,13 @@ class RR(Policy):
         self.cache_size = 0
 
     def evict(self, chunk: list[CacheBlock]) -> int:
+        self.cache_size -= 1
         return random.randint(0, len(chunk) - 1)
 
     def lookup(self, key: int) -> str:
+        if self.cache_size > self.max_size:
+            print("NONONO", str(self))
+
         set_idx = key % self.num_sets
         tag = key // self.num_sets
 

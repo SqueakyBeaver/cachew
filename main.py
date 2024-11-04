@@ -2,29 +2,41 @@ import statistics
 import random
 import policies
 import math
+import itertools
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import zeta
 from output import output
 
 # Odd number means a nice, round median
 g_reps = 1
 g_requests = 100000
 g_cache_size = 128 / g_requests
+g_rng = np.random.default_rng()
 
 # Global so they will persist between runs
 run_counter = 0
 keyset = []
 
 
-def zipf(num_unique: int, shape: float, request_count: int) -> list[int]:
-    ranks = range(num_unique)
-    probs = [(r + 1) ** shape for r in ranks]
-    total_probs = sum(probs)
-    norm_probs = [p / total_probs for p in probs]
+def zipf(num_unique: int, shape: float, request_count: int):
+    norm_const = 1 / sum((i**shape for i in range(1, num_unique + 1)))
 
-    return random.choices(
-        population=ranks,
-        weights=norm_probs,
-        k=request_count,
-    )
+    def gen_elements():
+        total = 0
+        for i in range(num_unique):
+            freq = norm_const * ((i + 1) ** shape)
+            cnt = round(freq * request_count)
+            total += cnt
+            yield from itertools.repeat(i, cnt)
+
+        if total < request_count:
+            yield from itertools.repeat(0, request_count - total)
+
+    ret = list(gen_elements())
+
+    random.shuffle(ret)
+    return ret
 
 
 def run_lookup(policy: policies.Policy) -> None:
@@ -42,6 +54,7 @@ def benchmark(
     requests=g_requests,
 ) -> dict[str, policies.Policy]:
     global g_reps
+    global g_rng
     global keyset
 
     cache_size = math.floor(cache_size * requests)
@@ -49,12 +62,11 @@ def benchmark(
     total_hits = {
         "LRU": [],
         "LFU": [],
-        "DRRIP": [],
         "RR": [],
     }
     for _ in range(g_reps):
         # Make a new keyset for each rep
-        keyset = zipf(cache_size * 2, shape, requests)
+        keyset = zipf(2 * cache_size, shape, requests)
 
         for policy in policies:
             name = str(policy)
@@ -72,7 +84,6 @@ def benchmark(
     return {
         "LRU": statistics.median(total_hits["LRU"]),
         "LFU": statistics.median(total_hits["LFU"]),
-        "DRRIP": statistics.median(total_hits["DRRIP"]),
         "RR": statistics.median(total_hits["RR"]),
     }
 
@@ -84,18 +95,16 @@ def test():
 
     lru = policies.LRU(max_size=math.floor(g_cache_size * g_requests))
     lfu = policies.LFU(max_size=math.floor(g_cache_size * g_requests))
-    drrip = policies.DRRIP(max_size=math.floor(g_cache_size * g_requests))
     rr = policies.RR(max_size=math.floor(g_cache_size * g_requests))
 
-    control_data = [["LRU Hits", "LFU Hits", "DRRIP Hits", "RR Hits"]]
+    control_data = [["LRU Hits", "LFU Hits", "RR Hits"]]
 
-    hits = benchmark([lru, lfu, drrip, rr])
+    hits = benchmark([lru, lfu, rr])
 
     control_data += [
         [
             hits["LRU"],
             hits["LFU"],
-            hits["DRRIP"],
             hits["RR"],
         ]
     ]
@@ -104,16 +113,15 @@ def test():
     print("Did control")
 
     # Test different shapes of the input distribution
-    shape_data = [["Shape var value", "LRU Hits", "LFU Hits", "DRRIP Hits", "RR Hits"]]
-    for shape in range(-100, 5, 25):
+    shape_data = [["Shape var value", "LRU Hits", "LFU Hits", "RR Hits"]]
+    for shape in range(-100, 10, 25):
         row = [shape / 100]
 
-        hits = benchmark([lru, lfu, drrip, rr], shape=shape / 100)
+        hits = benchmark([lru, lfu, rr], shape=shape / 100)
 
         row += [
             round(hits["LRU"], ndigits=2),
             round(hits["LFU"], ndigits=2),
-            round(hits["DRRIP"], ndigits=2),
             round(hits["RR"], ndigits=2),
         ]
 
@@ -121,15 +129,15 @@ def test():
 
     output("shape", shape_data)
     print("Finished Shape Test")
-    return
 
     # Test different cache sizes
     cache_data = [["Cache Size", "LRU Hits", "LFU Hits", "RR Hits"]]
-    for exp in range(3, 14):
+    for exp in range(5, 11):
         size = 2**exp
+        print(size)
         row = [size]
 
-        hits = benchmark([rr, lfu, lru], cache_size=size)
+        hits = benchmark([lru, lfu, rr], cache_size=size)
 
         row += [
             round(hits["LRU"], ndigits=2),
@@ -151,7 +159,7 @@ def test():
     for requests in range(1000, 11000, 1000):
         row = [requests]
 
-        hits = benchmark([rr, lfu, lru], requests=requests)
+        hits = benchmark([lru, lfu, rr], requests=requests)
 
         row += [
             round(hits["LRU"], ndigits=2),

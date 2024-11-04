@@ -47,6 +47,9 @@ class LFU(Policy):
         return lfu_idx
 
     def lookup(self, key: int) -> str:
+        if self.cache_size > self.max_size:
+            print("NONONO", str(self))
+
         set_idx = key % self.num_sets
         tag = key // self.num_sets
 

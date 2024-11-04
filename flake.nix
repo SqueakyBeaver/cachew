@@ -22,6 +22,9 @@
           ++ (with pkgs.python311Packages; [
             pip
             venvShellHook
+            numpy
+            matplotlib
+            scipy
           ]);
       };
     });
