@@ -21,6 +21,7 @@ class LRU(Policy):
         return "LRU"
 
     def reset_cache(self) -> None:
+        self.num_sets = self.max_size // self.assoc
         self.cache: list[list[LRU.CacheBlock]] = [[None] * self.assoc for _ in range(self.num_sets)]
         self.cache_size = 0
         self.time = 0
@@ -53,7 +54,7 @@ class LRU(Policy):
 
     def lookup(self, key: int) -> str:
         if self.cache_size > self.max_size:
-            print("NONONO", str(self), self.cache_size)
+            print("NONONO", str(self), self.cache_size, self.max_size)
 
         self.time += 1
 

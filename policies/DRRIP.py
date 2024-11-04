@@ -7,12 +7,12 @@ class DRRIP(Policy):
         def __init__(self, tag: int, val: str, policy: str, rrpv: int = 3):
             self.tag = tag
             self.val = val
-            self.rrpv = rrpv
+            self.rrpv = rrpv - 1
             self.policy = policy
 
             if policy == "b":
                 if random.random() <= 0.01:
-                    self.rrpv = rrpv - 1
+                    self.rrpv = rrpv - 2
 
         def __str__(self):
             return f"({self.tag}, {self.val})"
@@ -43,6 +43,7 @@ class DRRIP(Policy):
         return "DRRIP"
 
     def reset_cache(self) -> None:
+        self.num_sets = self.max_size // self.assoc
         self.cache: list[list[DRRIP.CacheBlock]] = [
             [None] * self.assoc for _ in range(self.num_sets)
         ]
@@ -79,7 +80,7 @@ class DRRIP(Policy):
 
     def lookup(self, key: int) -> str:
         if self.cache_size > self.max_size:
-            print("NONONO", str(self))
+            print("NONONO", str(self), self.cache_size, self.max_size)
         set_idx = key % self.num_sets
         tag = key // self.num_sets
 

@@ -18,6 +18,7 @@ class RR(Policy):
         return "RR"
 
     def reset_cache(self) -> None:
+        self.num_sets = self.max_size // self.assoc
         self.cache = [[None] * self.assoc for _ in range(self.num_sets)]
         self.cache_size = 0
 
@@ -27,7 +28,7 @@ class RR(Policy):
 
     def lookup(self, key: int) -> str:
         if self.cache_size > self.max_size:
-            print("NONONO", str(self))
+            print("NONONO", str(self), self.cache_size, self.max_size)
 
         set_idx = key % self.num_sets
         tag = key // self.num_sets

@@ -117,7 +117,7 @@ def test():
     
     # Test different cache sizes
     cache_data = [["Cache Size", "LRU Hits", "LFU Hits", "RR Hits"]]
-    for exp in range(5, 12):
+    for exp in range(5, 13):
         size = 2**exp
 
         row = [size]
