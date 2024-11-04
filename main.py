@@ -14,7 +14,6 @@ g_cache_size = 128
 run_counter = 0
 keyset = []
 
-
 def zipf(num_unique: int, shape: float, request_count: int):
     norm_const = 1 / sum((i**shape for i in range(1, num_unique + 1)))
 
@@ -30,17 +29,8 @@ def zipf(num_unique: int, shape: float, request_count: int):
             yield from itertools.repeat(0, request_count - total)
 
     ret = list(gen_elements())
-
     random.shuffle(ret)
     return ret
-
-
-def run_lookup(policy: policies.Policy) -> None:
-    global run_counter
-    global keyset
-
-    policy.lookup(keyset[run_counter % len(keyset)])
-    run_counter += 1
 
 
 def benchmark(
@@ -52,8 +42,6 @@ def benchmark(
     global g_reps
     global g_rng
     global keyset
-
-    cache_size = math.floor(cache_size * requests)
 
     total_hits = {
         "LRU": [],
@@ -110,10 +98,11 @@ def test():
 
     # Test different shapes of the input distribution
     shape_data = [["Shape var value", "LRU Hits", "LFU Hits", "RR Hits"]]
-    for shape in range(-100, 10, 25):
-        row = [shape / 100]
-
-        hits = benchmark([lru, lfu, rr], shape=shape / 100)
+    for i in range(-100, 10, 25):
+        shape = i / 100
+        row = [shape]
+        print(shape)
+        hits = benchmark([lru, lfu, rr], shape=shape)
 
         row += [
             round(hits["LRU"], ndigits=2),
@@ -125,12 +114,12 @@ def test():
 
     output("shape", shape_data)
     print("Finished Shape Test")
-
+    
     # Test different cache sizes
     cache_data = [["Cache Size", "LRU Hits", "LFU Hits", "RR Hits"]]
-    for exp in range(5, 11):
+    for exp in range(5, 12):
         size = 2**exp
-        print(size)
+
         row = [size]
 
         hits = benchmark([lru, lfu, rr], cache_size=size)
@@ -151,7 +140,14 @@ def test():
     print("Finished cache size Test")
 
     # Test different number of lookups
-    runs_data = [["Number of Lookups", "LRU Hits (per 1000 Lookups)", "LFU Hits (per 1000 Lookups)", "RR Hits (per 1000 Lookups)"]]
+    runs_data = [
+        [
+            "Number of Lookups",
+            "LRU Hits (per 1000 Lookups)",
+            "LFU Hits (per 1000 Lookups)",
+            "RR Hits (per 1000 Lookups)",
+        ]
+    ]
     for requests in range(10000, 110000, 10000):
         row = [requests]
 
